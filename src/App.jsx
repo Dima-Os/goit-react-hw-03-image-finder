@@ -22,17 +22,19 @@ export default class App extends Component {
   };
   componentDidUpdate(prevProps, prevState) {
     if (prevState.userQuery !== this.state.userQuery) {
-      this.setState(prevState => ({
-        isLoading: true,
-        currentPage: prevState.currentPage + 1,
-      }));
       this.fetchImages();
     }
   }
   fetchImages = () => {
+    this.setState({ isLoading: true });
     imageFinderAPI
       .getImages(this.state.userQuery, this.state.currentPage)
-      .then(({ hits }) => {
+      .then(({ hits, total }) => {
+        if (total === 0) {
+          throw new Error(
+            `По запросу ${this.state.userQuery} ничего не найдено!`,
+          );
+        }
         this.setState(prevState => ({
           images: [...prevState.images, ...hits],
         }));
@@ -40,6 +42,9 @@ export default class App extends Component {
           top: document.documentElement.offsetHeight,
           behavior: 'smooth',
         });
+        this.setState(prevState => ({
+          currentPage: prevState.currentPage + 1,
+        }));
       })
       .catch(error => this.setState({ error: error.message }))
       .finally(this.setState({ isLoading: false }));
@@ -66,6 +71,7 @@ export default class App extends Component {
       <div className={s.App}>
         <Searchbar onSubmitHandler={this.getUserQuery} />
         {this.state.isLoading && <PuffLoader />}
+        {this.state.error && <h1>{this.state.error}</h1>}
         {this.state.images.length > 0 && (
           <ImageGallery>
             {this.state.images.map(image => (
